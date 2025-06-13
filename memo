@@ -1,0 +1,100 @@
+import * as THREE from "three";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { DragControls } from "three/examples/jsm/controls/DragControls.js";
+
+let scene, camera, renderer, orbitControls, dragControls;
+let objects = [];
+let selected = null;
+
+// シーン作成
+scene = new THREE.Scene();
+
+// カメラ作成
+camera = new THREE.PerspectiveCamera(
+  50,
+  window.innerWidth / window.innerHeight,
+  0.1,
+  1000
+);
+camera.position.set(10, 10, 200);
+
+// レンダラー作成
+renderer = new THREE.WebGLRenderer({ alpha: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+// 地球儀テクスチャとメッシュ作成
+const texture = new THREE.TextureLoader().load("./textures/earth.jpg");
+const geometry = new THREE.SphereGeometry(10, 64, 32);
+const material = new THREE.MeshPhysicalMaterial({ map: texture });
+
+const ballMesh = new THREE.Mesh(geometry, material);
+ballMesh.position.set(0, 0.5, 0); // Y = 0.5 固定
+scene.add(ballMesh);
+objects.push(ballMesh);
+
+// ライト
+const directionalLight = new THREE.DirectionalLight(0xffffff, 2);
+scene.add(directionalLight);
+
+// 軸とグリッドヘルパー
+const axesHelper = new THREE.AxesHelper(100);
+scene.add(axesHelper);
+
+const gridHelper = new THREE.GridHelper(1000, 20);
+scene.add(gridHelper);
+
+// OrbitControls（カメラ操作）
+orbitControls = new OrbitControls(camera, renderer.domElement);
+orbitControls.enableDamping = true;
+
+// DragControls（オブジェクト操作）
+dragControls = new DragControls(objects, camera, renderer.domElement);
+
+// Raycaster 用意
+const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0); // XZ 平面（Y=0）
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+
+// マウス位置を取得
+window.addEventListener("mousemove", (event) => {
+  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+});
+
+// ドラッグ開始 → カメラ操作無効化
+dragControls.addEventListener("dragstart", (event) => {
+  selected = event.object;
+  orbitControls.enabled = false;
+});
+
+// ドラッグ中 → 平面と交差する位置にスナップ
+dragControls.addEventListener("drag", () => {
+  raycaster.setFromCamera(mouse, camera);
+  const intersectPoint = new THREE.Vector3();
+  const hit = raycaster.ray.intersectPlane(plane, intersectPoint);
+
+  if (hit && selected) {
+    selected.position.x = intersectPoint.x;
+    selected.position.z = intersectPoint.z;
+    selected.position.y = 0.5; // Yは固定
+
+    console.log(
+      `🌍 地球儀位置: x=${selected.position.x.toFixed(2)}, z=${selected.position.z.toFixed(2)}`
+    );
+  }
+});
+
+// ドラッグ終了 → カメラ操作再開
+dragControls.addEventListener("dragend", () => {
+  selected = null;
+  orbitControls.enabled = true;
+});
+
+// レンダリングループ
+function animate() {
+  requestAnimationFrame(animate);
+  orbitControls.update();
+  renderer.render(scene, camera);
+}
+animate();
