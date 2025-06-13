@@ -9,6 +9,8 @@ import { DragControls } from "three/examples/jsm/controls/DragControls.js";
 // // シーン作成
 // scene = new THREE.Scene();
 
+
+
 // // カメラ作成
 // camera = new THREE.PerspectiveCamera(
 //   50,
